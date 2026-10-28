@@ -1,0 +1,23 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo %}
+{% block titulo %}Mi cuenta{% endblock %}
+{% block contenido %}
+{% call titulo('Mi cuenta', usuario.email) %}{% endcall %}
+<div class="row g-3">
+  <div class="col-lg-5"><div class="tarjeta">
+    <h2>Datos</h2>
+    <div class="dato"><span class="k">Nombre</span>{{ usuario.nombre_completo }}</div>
+    <div class="dato"><span class="k">Correo</span>{{ usuario.email }}</div>
+    <div class="dato"><span class="k">Rol</span>{{ rol_txt(usuario.rol) }}</div>
+  </div></div>
+  <div class="col-lg-7"><div class="tarjeta">
+    <h2>Cambiar contraseña</h2>
+    <form method="post">{{ csrf() }}
+      <div class="mb-3"><label class="form-label">Contraseña actual</label><input class="form-control" type="password" name="actual" required autocomplete="current-password"></div>
+      <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Contraseña nueva</label><input class="form-control" type="password" name="nueva" required autocomplete="new-password"></div>
+      <div class="col-md-6 mb-3"><label class="form-label">Repita la nueva</label><input class="form-control" type="password" name="repetir" required autocomplete="new-password"></div></div>
+      <div class="form-text mb-3">Mínimo 8 caracteres, con letras y números.</div>
+      <button class="btn btn-primary" type="submit">Cambiar contraseña</button>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

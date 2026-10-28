@@ -1,0 +1,15 @@
+{# Campos del formulario de paciente (registro y edición). Variables: d (datos), niveles #}
+<div class="row g-3">
+  <div class="col-md-6"><label class="form-label">Nombres *</label><input class="form-control" name="nombres" value="{{ d.nombres or '' }}" required></div>
+  <div class="col-md-6"><label class="form-label">Apellidos *</label><input class="form-control" name="apellidos" value="{{ d.apellidos or '' }}" required></div>
+  <div class="col-md-3"><label class="form-label">Fecha de nacimiento *</label><input class="form-control" type="date" name="fecha_nacimiento" value="{{ d.fecha_nacimiento or '' }}" max="{{ hoy }}" required></div>
+  <div class="col-md-2"><label class="form-label">Sexo *</label><select class="form-select" name="sexo" required>
+    <option value="F" {{ 'selected' if d.sexo == 'F' }}>Femenino</option><option value="M" {{ 'selected' if d.sexo == 'M' }}>Masculino</option></select></div>
+  <div class="col-md-3"><label class="form-label">DNI (8 dígitos)</label><input class="form-control" name="dni" value="{{ d.dni or '' }}" pattern="\d{8}" maxlength="8" inputmode="numeric"></div>
+  <div class="col-md-4"><label class="form-label">Nivel educativo</label><select class="form-select" name="nivel_educativo">
+    {% for n in niveles %}<option value="{{ n }}" {{ 'selected' if (d.nivel_educativo or '') == n }}>{{ n or '—' }}</option>{% endfor %}</select></div>
+  <div class="col-md-4"><label class="form-label">Teléfono</label><input class="form-control" name="telefono" value="{{ d.telefono or '' }}" inputmode="tel"></div>
+  <div class="col-md-4"><label class="form-label">Correo</label><input class="form-control" type="email" name="email" value="{{ d.email or '' }}"></div>
+  <div class="col-md-4"><label class="form-label">Contacto de emergencia</label><input class="form-control" name="contacto_emergencia" value="{{ d.contacto_emergencia or '' }}"></div>
+  <div class="col-12"><label class="form-label">Dirección</label><input class="form-control" name="direccion" value="{{ d.direccion or '' }}"></div>
+</div>

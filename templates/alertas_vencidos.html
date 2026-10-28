@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, kpi, vacio %}
+{% block titulo %}Alertas de seguimiento{% endblock %}
+{% block contenido %}
+{% call titulo('Alertas de seguimiento', 'Pacientes en control que necesitan atención del servicio para no abandonar su seguimiento.') %}{% endcall %}
+{% with items = [(url_for('alertas.vencidos'), 'Controles vencidos', True), (url_for('alertas.inasistentes'), 'Inasistentes recientes', False)] %}{% include '_subnav.html' %}{% endwith %}
+<div class="row g-3 mb-3"><div class="col-md-4">{{ kpi('Casos con control vencido', filas|length, 'superaron su plazo de control', 'rojo', 'bi-bell') }}</div></div>
+{% if not filas %}<div class="alert alert-success">No hay controles vencidos.</div>{% else %}
+<div class="tabla-wrap">
+  <div class="barra-tabla"><input class="form-control form-control-sm" style="max-width:280px" placeholder="Buscar en la tabla…" data-filtro="#t-alertas">
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alertas.csv_vencidos') }}"><i class="bi bi-download me-1"></i>Descargar lista (CSV)</a></div>
+  <div class="table-responsive"><table class="table table-hover align-middle" id="t-alertas"><thead><tr>
+    {% for c in columnas %}<th>{{ nombres.get(c, c.replace('_', ' ')|capitalize) }}</th>{% endfor %}<th></th></tr></thead><tbody>
+    {% for f in filas %}<tr>
+      {% for c in columnas %}{% set v = f[c] %}<td>{% if c == 'dias_vencido' %}<span class="est est-inasistio">{{ v }} días</span>{% elif v is none %}—{% elif v.strftime is defined %}{{ v|fecha }}{% else %}{{ v }}{% endif %}</td>{% endfor %}
+      <td class="text-end">{% if f.paciente_id is defined %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('pacientes.ficha', pid=f.paciente_id) }}">Abrir ficha</a>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, estado %}
+{% block titulo %}Usuarios{% endblock %}
+{% block contenido %}
+{% call titulo('Administración', 'Usuarios, bitácora de auditoría y accesos al sistema.') %}{% endcall %}
+{% with items = [(url_for('admin.usuarios'), 'Usuarios', True)] + ([(url_for('admin.bitacora'), 'Bitácora de auditoría', False), (url_for('admin.accesos'), 'Accesos al sistema', False)] if tiene('auditoria.ver') else []) %}{% include '_subnav.html' %}{% endwith %}
+<div class="tabla-wrap">
+  <div class="barra-tabla"><input class="form-control form-control-sm" style="max-width:280px" placeholder="Buscar usuario…" data-filtro="#t-usr">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#m-usuario"><i class="bi bi-person-plus me-1"></i>Crear usuario</button></div>
+  <div class="table-responsive"><table class="table table-hover align-middle" id="t-usr"><thead><tr><th>N.º</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Bloqueado hasta</th><th>Último acceso</th><th class="text-end">Acciones</th></tr></thead><tbody>
+  {% for f in filas %}<tr><td>{{ f.id }}</td><td class="fw-semibold">{{ f.nombres }} {{ f.apellidos }}</td><td>{{ f.email }}</td><td>{{ rol_txt(f.rol) }}</td>
+    <td>{{ estado('activo' if f.activo else 'inactivo', 'Activo' if f.activo else 'Inactivo') }}</td>
+    <td>{{ f.bloqueado_hasta|fechahora if f.bloqueado_hasta else '—' }}</td><td>{{ f.ultimo_acceso|fechahora }}</td>
+    <td class="text-end text-nowrap">
+      <form class="d-inline" method="post" action="{{ url_for('admin.accion_usuario', uid=f.id, accion='desbloquear') }}">{{ csrf() }}<button class="btn btn-sm btn-outline-primary" title="Desbloquear cuenta"><i class="bi bi-unlock"></i></button></form>
+      {% if f.id != usuario.id %}<form class="d-inline" method="post" action="{{ url_for('admin.accion_usuario', uid=f.id, accion='desactivar' if f.activo else 'activar') }}" data-confirmar="¿{{ 'Desactivar' if f.activo else 'Activar' }} a {{ f.nombres }} {{ f.apellidos }}?">{{ csrf() }}
+        <button class="btn btn-sm {{ 'btn-outline-danger' if f.activo else 'btn-outline-success' }}" title="{{ 'Desactivar' if f.activo else 'Activar' }}"><i class="bi {{ 'bi-pause-circle' if f.activo else 'bi-play-circle' }}"></i></button></form>{% endif %}
+    </td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+<div class="modal fade" id="m-usuario" tabindex="-1"><div class="modal-dialog modal-lg"><form class="modal-content" method="post" action="{{ url_for('admin.crear') }}" autocomplete="off">{{ csrf() }}
+  <div class="modal-header"><h5 class="modal-title">Crear usuario nuevo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body row g-3">
+    <div class="col-md-6"><label class="form-label">Rol</label><select class="form-select" name="rol">{% for r in roles %}<option value="{{ r }}">{{ rol_txt(r) }}</option>{% endfor %}</select></div>
+    <div class="col-md-6"><label class="form-label">Correo</label><input class="form-control" type="email" name="email" required></div>
+    <div class="col-md-6"><label class="form-label">Nombres</label><input class="form-control" name="nombres" required></div>
+    <div class="col-md-6"><label class="form-label">Apellidos</label><input class="form-control" name="apellidos" required></div>
+    <div class="col-md-6"><label class="form-label">N.º de colegiatura (médicos)</label><input class="form-control" name="colegiatura"></div>
+    <div class="col-md-6"><label class="form-label">Especialidad</label><input class="form-control" name="especialidad"></div>
+    <div class="col-md-6"><label class="form-label">Contraseña inicial</label><input class="form-control" type="password" name="clave" required autocomplete="new-password"><div class="form-text">Mínimo 8 caracteres, con letras y números.</div></div>
+    <div class="col-md-6"><label class="form-label">Repita la contraseña</label><input class="form-control" type="password" name="repetir" required autocomplete="new-password"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary" type="submit">Crear usuario</button></div></form></div></div>
+{% endblock %}

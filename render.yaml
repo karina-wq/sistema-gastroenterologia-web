@@ -1,0 +1,22 @@
+# Configuración de despliegue en Render (plan gratuito). Render lee este archivo del repositorio.
+services:
+  - type: web
+    name: gastro-loayza
+    runtime: python
+    plan: free
+    region: ohio                 # misma región que la base de Neon (us-east-2) → menos latencia
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /salud
+    autoDeploy: true             # cada commit en GitHub vuelve a publicar la app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY          # clave para firmar las sesiones: Render la genera sola
+        generateValue: true
+      - key: NEON_URL            # cadena de conexión de Neon: se pega en el panel de Render
+        sync: false
+      - key: GMAIL_USER          # opcional (recordatorios por correo)
+        sync: false
+      - key: GMAIL_APP_PASSWORD  # opcional
+        sync: false

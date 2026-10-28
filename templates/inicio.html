@@ -1,0 +1,58 @@
+{% extends 'base.html' %}{% from '_m.html' import kpi, indicador, vacio, estado %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<div class="banner">
+  <h1>Bienvenido/a, {{ usuario.nombres }}</h1>
+  <p>{{ rol_txt(usuario.rol) }} · Hoy es {{ hoy|fecha }} · Servicio de Gastroenterología</p>
+</div>
+
+{% if tarjetas %}
+<div class="row g-3 mb-2">
+  {% for t in tarjetas %}<div class="col-md-4">{{ kpi(t.titulo, t.valor, t.detalle, t.color, t.icono, url_for(t.enlace)) }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="seccion">Accesos rápidos</div>
+<div class="d-flex flex-wrap gap-2 mb-2">
+  {% if tiene('pacientes.editar') %}<a class="btn btn-primary" href="{{ url_for('pacientes.nuevo') }}"><i class="bi bi-person-plus me-1"></i>Registrar paciente</a>{% endif %}
+  {% if tiene('pacientes.ver') %}<a class="btn btn-outline-primary" href="{{ url_for('pacientes.buscar') }}"><i class="bi bi-search me-1"></i>Buscar paciente</a>{% endif %}
+  {% if tiene('citas.gestionar') %}<a class="btn btn-outline-primary" href="{{ url_for('agenda.citas') }}"><i class="bi bi-calendar-check me-1"></i>Ver agenda</a>{% endif %}
+  {% if tiene('atenciones.ver') %}<a class="btn btn-outline-primary" href="{{ url_for('atencion.lista') }}"><i class="bi bi-heart-pulse me-1"></i>Atención clínica</a>{% endif %}
+  {% if tiene('pacientes.ver') %}<a class="btn btn-outline-danger" href="{{ url_for('alertas.vencidos') }}"><i class="bi bi-bell me-1"></i>Alertas</a>{% endif %}
+</div>
+
+<div class="row g-3">
+  {% if grafico %}
+  <div class="{{ 'col-lg-8' if vencidos else 'col-12' }}"><div class="tarjeta h-100">
+    <h2><i class="bi bi-bar-chart me-1"></i>Citas de los últimos 14 días, por estado</h2>
+    <div class="chart-box"><canvas data-grafico="barras" data-origen="#datos-citas"></canvas></div>
+    <script type="application/json" id="datos-citas">{{ grafico|tojson }}</script>
+  </div></div>
+  {% endif %}
+  {% if vencidos %}
+  <div class="{{ 'col-lg-4' if grafico else 'col-12' }}"><div class="tarjeta h-100">
+    <h2><i class="bi bi-bell me-1 text-danger"></i>Controles vencidos <span class="badge text-bg-danger">{{ total_vencidos }}</span></h2>
+    <ul class="list-unstyled mb-2">
+      {% for v in vencidos %}
+        <li class="d-flex justify-content-between border-bottom py-2"><a href="{{ url_for('pacientes.ficha', pid=v.paciente_id) if v.paciente_id else '#' }}" class="text-decoration-none fw-semibold">{{ v.paciente or v.codigo }}</a>
+          <span class="text-danger small fw-bold">{% if v.dias_vencido is defined %}{{ v.dias_vencido }} días{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+    <a href="{{ url_for('alertas.vencidos') }}" class="small">Ver todos →</a>
+  </div></div>
+  {% endif %}
+</div>
+
+{% if modulos %}
+  <div class="seccion">Indicadores del año {{ hoy.year }}</div>
+  {% for m in modulos %}
+    <div class="text-secondary fw-bold small mb-2 mt-3"><i class="bi {{ m.icono }} me-1"></i>{{ m.titulo }}</div>
+    <div class="row g-3">{% for t in m.tarjetas %}<div class="col-md-6">{{ indicador(t) }}</div>{% endfor %}</div>
+  {% endfor %}
+{% endif %}
+
+<details class="tarjeta mt-4">
+  <summary class="fw-bold" style="cursor:pointer">¿Qué puedo hacer con mi rol?</summary>
+  <ul class="mt-2 mb-0">{% for f in funciones %}<li>{{ f }}</li>{% endfor %}</ul>
+</details>
+{% endblock %}

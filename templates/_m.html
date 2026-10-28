@@ -1,0 +1,27 @@
+{% macro estado(e, texto=None) %}<span class="est est-{{ e }}">{{ texto or {'asistio':'Asistió','programada':'Programada','inasistio':'Inasistió','reprogramada':'Reprogramada','cancelada':'Cancelada','en_seguimiento':'En seguimiento','alta':'Alta','abandono':'Abandono','borrador':'Borrador','finalizada':'Finalizada','pendiente':'Pendiente','enviado':'Enviado','fallido':'Fallido','exitoso':'Exitoso','denegado':'Denegado'}.get(e, e) }}</span>{% endmacro %}
+
+{% macro kpi(titulo, valor, detalle, color='azul', icono='bi-activity', enlace=None) %}
+  {% if enlace %}<a href="{{ enlace }}" class="kpi {{ color }}">{% else %}<div class="kpi {{ color }}">{% endif %}
+    <i class="bi {{ icono }} ico"></i><div class="t">{{ titulo }}</div><div class="v">{{ valor }}</div><div class="d">{{ detalle }}</div>
+  {% if enlace %}</a>{% else %}</div>{% endif %}
+{% endmacro %}
+
+{% macro indicador(t) %}
+  {% set p = t.porcentaje %}
+  {% if p is none %}{% set clase = 'sin' %}
+  {% elif t.mayor_mejor %}{% set clase = 'bien' if p >= 80 else ('medio' if p >= 50 else 'mal') %}
+  {% else %}{% set clase = 'bien' if p <= 5 else ('medio' if p <= 15 else 'mal') %}{% endif %}
+  <div class="ind">
+    <div class="n">{{ t.nombre }}</div>
+    <div class="p {{ clase }}">{{ ('%.1f' % p) ~ ' %' if p is not none else '—' }}</div>
+    <div class="barra"><span class="bg-{{ clase }}" style="width: {{ p if p is not none else 0 }}%"></span></div>
+    <div class="f">{{ t.formula }}.{% if t.numerador is not none and t.denominador is not none %} <b>{{ t.numerador }} de {{ t.denominador }}.</b>{% elif p is none %} Sin datos en el periodo.{% endif %}
+      {{ 'Más alto es mejor.' if t.mayor_mejor else 'Más bajo es mejor.' }}</div>
+  </div>
+{% endmacro %}
+
+{% macro vacio(texto, icono='bi-inbox') %}<div class="vacio"><i class="bi {{ icono }}"></i>{{ texto }}</div>{% endmacro %}
+
+{% macro titulo(texto, sub='') %}
+  <div class="titulo-pagina"><div><h1>{{ texto }}</h1>{% if sub %}<div class="sub">{{ sub }}</div>{% endif %}</div>{{ caller() if caller else '' }}</div>
+{% endmacro %}

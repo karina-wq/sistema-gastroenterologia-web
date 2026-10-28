@@ -1,0 +1,31 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, estado, vacio %}
+{% block titulo %}Atención clínica{% endblock %}
+{% block contenido %}
+{% call titulo('Atención clínica', 'Elija la cita del día, inicie la atención y complete el protocolo.') %}{% endcall %}
+<div class="tarjeta"><form method="get" class="row g-2 align-items-end">
+  <div class="col-md-3"><label class="form-label">Fecha de las citas</label><input class="form-control" type="date" name="fecha" value="{{ fecha }}"></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Ver citas</button></div>
+</form></div>
+{% if not puede_listar %}
+  <div class="alert alert-info">Su rol no puede listar citas. Abra una atención desde el historial del paciente.</div>
+{% elif not citas %}
+  <div class="tabla-wrap">{{ vacio('No hay citas vigentes para esa fecha.', 'bi-calendar-x') }}</div>
+{% else %}
+<div class="tabla-wrap"><div class="table-responsive"><table class="table table-hover align-middle">
+  <thead><tr><th>Hora</th><th>Paciente</th><th>Médico</th><th>Situación</th><th class="text-end">Acción</th></tr></thead><tbody>
+  {% for c in citas %}{% set at = meta.get(c.id) %}
+    <tr><td><b>{{ c.hora_programada|hora }}</b></td>
+      <td><a class="fw-semibold text-decoration-none" href="{{ url_for('pacientes.ficha', pid=c.paciente_id) }}">{{ c.paciente }}</a><br><span class="small text-secondary">{{ c.codigo }}</span></td>
+      <td>{{ c.medico or '—' }}</td>
+      <td>{% if at %}{{ estado(at.estado) }}{% else %}{{ estado(c.estado) }}{% endif %}</td>
+      <td class="text-end">
+        {% if at %}<a class="btn btn-primary btn-sm" href="{{ url_for('atencion.trabajo', aid=at.id) }}">Abrir la atención</a>
+        {% elif tiene('atenciones.registrar') %}
+          <form class="d-inline-flex gap-2 align-items-center" method="post" action="{{ url_for('atencion.iniciar', cid=c.id) }}">{{ csrf() }}
+            <label class="small text-secondary mb-0">Llegada</label><input class="form-control form-control-sm" style="width:110px" type="time" name="llegada" value="{{ ahora }}" required>
+            <button class="btn btn-primary btn-sm"><i class="bi bi-play-fill"></i> Iniciar atención</button></form>
+        {% else %}<span class="small text-secondary">Solo el médico puede iniciarla</span>{% endif %}
+      </td></tr>
+  {% endfor %}</tbody></table></div></div>
+{% endif %}
+{% endblock %}

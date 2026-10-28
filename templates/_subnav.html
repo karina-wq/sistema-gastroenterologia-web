@@ -1,0 +1,2 @@
+{# Barra de secciones. Variable: items = [(url, texto, activo)] #}
+<div class="subnav no-imprimir">{% for url, texto, activo in items %}<a href="{{ url }}" class="{{ 'activo' if activo }}">{{ texto }}</a>{% endfor %}</div>

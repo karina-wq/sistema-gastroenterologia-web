@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, vacio %}
+{% block titulo %}Pacientes{% endblock %}
+{% block contenido %}
+{% call titulo('Pacientes', 'Busque por nombre, apellido, DNI o código.') %}
+  {% if tiene('pacientes.editar') %}<a class="btn btn-primary" href="{{ url_for('pacientes.nuevo') }}"><i class="bi bi-person-plus me-1"></i>Registrar paciente</a>{% endif %}
+{% endcall %}
+<div class="tarjeta">
+  <form method="get" class="row g-2">
+    <div class="col"><input class="form-control form-control-lg" name="q" value="{{ q }}" placeholder="Ej.: Gómez, 45678912, P-00012" autofocus></div>
+    <div class="col-auto"><button class="btn btn-primary btn-lg" type="submit"><i class="bi bi-search me-1"></i>Buscar</button></div>
+  </form>
+</div>
+{% if filas is not none %}
+<div class="tabla-wrap">
+  <div class="barra-tabla"><b>{{ filas|length }} resultado(s)</b></div>
+  {% if filas %}
+  <div class="table-responsive"><table class="table table-hover align-middle">
+    <thead><tr><th>Código</th><th>DNI</th><th>Apellidos</th><th>Nombres</th><th>Sexo</th><th>Edad</th><th>Teléfono</th><th>Estado</th><th></th></tr></thead>
+    <tbody>{% for p in filas %}
+      <tr><td><b>{{ p.codigo }}</b></td><td>{{ p.dni or '—' }}</td><td>{{ p.apellidos }}</td><td>{{ p.nombres }}</td><td>{{ p.sexo }}</td><td>{{ p.edad }}</td>
+        <td>{{ p.telefono or '—' }}</td><td>{{ 'Activo' if p.activo else 'Inactivo' }}</td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('pacientes.ficha', pid=p.id) }}">Abrir ficha</a></td></tr>
+    {% endfor %}</tbody></table></div>
+  {% else %}{{ vacio('No se encontraron pacientes con ese dato.', 'bi-search') }}{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Control de Pacientes{% endblock %} · Gastroenterología HNAL</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
+  <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+</head>
+<body>
+{% block cuerpo %}
+<aside class="barra-lateral">
+  <div class="logo"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Hospital Nacional Arzobispo Loayza"></div>
+  <div class="servicio">Gastroenterología</div>
+  <div class="hospital">Hospital Nacional Arzobispo Loayza</div>
+  <nav>
+    {% for endpoint, texto, icono, _ in menu %}
+      <a class="nav-item-app {{ 'activo' if es_activo(endpoint) }}" href="{{ url_for(endpoint) }}"><i class="bi {{ icono }}"></i>{{ texto }}</a>
+    {% endfor %}
+  </nav>
+  <div class="pie">
+    <div class="nombre">{{ usuario.nombre_completo }}</div>
+    <div class="mb-2 text-white-50">{{ rol_txt(usuario.rol) }}</div>
+    {% if datos_simulados %}
+      <div class="small p-2 mb-2 rounded" style="background:rgba(227,155,11,.2);color:#ffd98a"><i class="bi bi-exclamation-triangle me-1"></i>La base tiene <b>datos simulados</b> de prueba. Deben eliminarse antes de las mediciones reales.</div>
+    {% endif %}
+    <form method="post" action="{{ url_for('auth.logout') }}" data-confirmar="¿Cerrar sesión?">{{ csrf() }}
+      <button class="btn btn-sm btn-outline-light w-100" data-libre="1"><i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión</button></form>
+  </div>
+</aside>
+<div class="contenido">
+  <header class="barra-superior">
+    <button class="btn btn-outline-primary d-lg-none" id="abrir-menu" aria-label="Menú"><i class="bi bi-list"></i></button>
+    <div class="fw-bold text-primary-emphasis d-none d-sm-block" style="color:var(--azul-osc)">Control de Pacientes</div>
+    <div class="ms-auto fecha"><i class="bi bi-clock me-1"></i>{{ hoy|fecha }}</div>
+    <span class="badge rounded-pill text-bg-light border"><i class="bi bi-person me-1"></i>{{ usuario.nombres }}</span>
+  </header>
+  <main class="principal">{% block contenido %}{% endblock %}</main>
+</div>
+{% endblock %}
+<div class="alerts-flotantes">
+  {% with mensajes = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in mensajes %}
+      <div class="alert alert-{{ cat if cat in ('success','warning','danger','info') else 'info' }} alert-dismissible fade show" role="alert">{{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}
+  {% endwith %}
+</div>
+<script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+{% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

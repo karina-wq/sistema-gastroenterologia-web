@@ -1,0 +1,59 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, estado, vacio %}
+{% block titulo %}Agenda{% endblock %}
+{% block contenido %}
+{% call titulo('Agenda de citas', 'Asistencia, reprogramación y acceso directo a la atención clínica.') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('agenda.recordatorios') }}"><i class="bi bi-envelope-paper me-1"></i>Recordatorios</a>{% endcall %}
+
+<div class="tarjeta"><form method="get" class="row g-2 align-items-end">
+  <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="desde" value="{{ desde }}"></div>
+  <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="hasta" value="{{ hasta }}"></div>
+  <div class="col-md-2"><label class="form-label">Estado</label><select class="form-select" name="estado"><option value="">Todos</option>
+    {% for k, v in estados.items() %}<option value="{{ k }}" {{ 'selected' if estado == k }}>{{ v }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><label class="form-label">Médico</label><select class="form-select" name="medico_id"><option value="">Todos</option>
+    {% for k, v in medicos.items() %}<option value="{{ k }}" {{ 'selected' if medico == k }}>{{ v }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-funnel me-1"></i>Filtrar</button></div>
+</form></div>
+
+<div class="tabla-wrap">
+  <div class="barra-tabla"><b><span id="n-citas">{{ filas|length }}</span> cita(s)</b>
+    <input class="form-control form-control-sm" style="max-width:260px" placeholder="Buscar en la tabla…" data-filtro="#t-citas" data-contador="#n-citas"></div>
+  {% if filas %}
+  <div class="table-responsive"><table class="table table-hover align-middle" id="t-citas">
+    <thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Teléfono</th><th>Médico</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+    <tbody>{% for c in filas %}{% set at = atenciones.get(c.id) %}
+      <tr><td>{{ c.fecha_programada|fecha }}</td><td>{{ c.hora_programada|hora }}</td>
+        <td><a class="fw-semibold text-decoration-none" href="{{ url_for('pacientes.ficha', pid=c.paciente_id) }}">{{ c.paciente }}</a><br><span class="small text-secondary">{{ c.codigo }}</span></td>
+        <td>{{ c.telefono or '—' }}</td><td>{{ c.medico or '—' }}</td>
+        <td>{{ estado(c.estado) }}{% if at %}<br><span class="small text-secondary">atención {{ at.estado }}</span>{% endif %}</td>
+        <td class="text-end text-nowrap">
+          {% if c.estado in ('programada', 'inasistio') %}
+            <form class="d-inline" method="post" action="{{ url_for('agenda.accion_cita', cid=c.id, accion='asistencia') }}">{{ csrf() }}<input type="hidden" name="volver" value="{{ request.full_path }}">
+              <button class="btn btn-sm btn-success" title="Registrar asistencia"><i class="bi bi-check2-circle"></i> Asistió</button></form>{% endif %}
+          {% if c.estado == 'programada' %}
+            <form class="d-inline" method="post" action="{{ url_for('agenda.accion_cita', cid=c.id, accion='inasistencia') }}" data-confirmar="¿Marcar esta cita como inasistencia?">{{ csrf() }}<input type="hidden" name="volver" value="{{ request.full_path }}">
+              <button class="btn btn-sm btn-outline-danger" title="Marcar inasistencia"><i class="bi bi-x-circle"></i></button></form>
+            <button class="btn btn-sm btn-outline-primary" title="Reprogramar" data-modal="#m-reprog" data-campos='{{ {"accion": url_for("agenda.accion_cita", cid=c.id, accion="reprogramar"), "paciente": c.paciente}|tojson }}'><i class="bi bi-arrow-repeat"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" title="Cancelar" data-modal="#m-cancel" data-campos='{{ {"accion": url_for("agenda.accion_cita", cid=c.id, accion="cancelar"), "paciente": c.paciente}|tojson }}'><i class="bi bi-slash-circle"></i></button>
+          {% endif %}
+          {% if at and tiene('atenciones.ver') %}<a class="btn btn-sm btn-primary" href="{{ url_for('atencion.trabajo', aid=at.id) }}"><i class="bi bi-heart-pulse"></i> Atención</a>
+          {% elif c.estado == 'asistio' and tiene('atenciones.registrar') %}<a class="btn btn-sm btn-primary" href="{{ url_for('atencion.lista', fecha=c.fecha_programada) }}"><i class="bi bi-heart-pulse"></i> Atender</a>{% endif %}
+        </td></tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}{{ vacio('No hay citas en ese rango.', 'bi-calendar-x') }}{% endif %}
+</div>
+
+<div class="modal fade" id="m-reprog" tabindex="-1"><div class="modal-dialog"><form class="modal-content" method="post" data-campo="accion">{{ csrf() }}
+  <input type="hidden" name="volver" value="{{ request.full_path }}">
+  <div class="modal-header"><h5 class="modal-title">Reprogramar cita de <span data-campo="paciente"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body row g-3">
+    <div class="col-md-6"><label class="form-label">Nueva fecha</label><input class="form-control" type="date" name="fecha" min="{{ hoy }}" required></div>
+    <div class="col-md-6"><label class="form-label">Hora</label><input class="form-control" type="time" name="hora" value="09:00" step="900"></div>
+    <div class="col-12"><label class="form-label">Recordatorio por</label><select class="form-select" name="canal"><option>correo</option><option>whatsapp</option><option>sms</option></select></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary" type="submit">Reprogramar</button></div></form></div></div>
+<div class="modal fade" id="m-cancel" tabindex="-1"><div class="modal-dialog"><form class="modal-content" method="post" data-campo="accion">{{ csrf() }}
+  <input type="hidden" name="volver" value="{{ request.full_path }}">
+  <div class="modal-header"><h5 class="modal-title">Cancelar cita de <span data-campo="paciente"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><label class="form-label">Motivo (opcional)</label><input class="form-control" name="motivo"></div>
+  <div class="modal-footer"><button class="btn btn-danger" type="submit">Cancelar la cita</button></div></form></div></div>
+{% endblock %}

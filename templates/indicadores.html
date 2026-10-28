@@ -1,0 +1,59 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, indicador, vacio, estado %}
+{% block titulo %}Indicadores{% endblock %}
+{% block contenido %}
+{% call titulo('Indicadores y reportes', 'Los 6 indicadores de la tesis, agrupados en sus 3 módulos.') %}
+  {% if not error %}<a class="btn btn-success" href="{{ url_for('indicadores.excel', desde=desde, hasta=hasta) }}" data-libre="1"><i class="bi bi-file-earmark-excel me-1"></i>Descargar Excel (8 hojas)</a>{% endif %}{% endcall %}
+<div class="tarjeta"><form method="get" class="row g-2 align-items-end">
+  <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="desde" value="{{ desde }}"></div>
+  <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="hasta" value="{{ hasta }}"></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-calculator me-1"></i>Calcular</button></div>
+  <div class="col-md-4 small text-secondary">Periodo calculado: <b>{{ desde|fecha }}</b> al <b>{{ hasta|fecha }}</b>. La descarga del Excel queda registrada en la bitácora.</div>
+</form></div>
+{% if error %}<div class="alert alert-danger">No se pudieron calcular los indicadores. Revise el mensaje e intente de nuevo.</div>{% else %}
+
+<ul class="nav nav-pills mb-3" role="tablist">
+  {% for m in modulos %}<li class="nav-item"><button class="nav-link {{ 'active' if loop.first }}" data-bs-toggle="pill" data-bs-target="#mod-{{ m.clave }}" type="button"><i class="bi {{ m.icono }} me-1"></i>{{ m.titulo }}</button></li>{% endfor %}
+</ul>
+<div class="tab-content">
+{% for m in modulos %}
+<div class="tab-pane fade {{ 'show active' if loop.first }}" id="mod-{{ m.clave }}">
+  <div class="row g-3 mb-3">{% for t in m.tarjetas %}<div class="col-md-6">{{ indicador(t) }}</div>{% endfor %}</div>
+  <div class="tarjeta"><h2>Evolución mensual (%)</h2>
+    {% if m.grafico %}<div class="chart-box"><canvas data-grafico="lineas" data-origen="#graf-{{ m.clave }}"></canvas></div><script type="application/json" id="graf-{{ m.clave }}">{{ m.grafico|tojson }}</script>
+    {% else %}<p class="text-secondary mb-0">Sin evolución mensual disponible para este periodo.</p>{% endif %}</div>
+
+  {% if m.clave == 'Seguimiento' %}
+    <div class="tarjeta"><h2>Citas por estado</h2>
+    {% if citas %}<div class="row align-items-center"><div class="col-md-5"><div class="chart-box" style="height:240px"><canvas data-grafico="dona" data-origen="#datos-dona"></canvas></div></div>
+      <div class="col-md-7"><table class="table"><thead><tr><th>Estado</th><th>Citas</th></tr></thead><tbody>{% for c in citas %}<tr><td>{{ estado(c.estado) }}</td><td><b>{{ c.citas }}</b></td></tr>{% endfor %}</tbody></table></div></div>
+      <script type="application/json" id="datos-dona">{{ {'etiquetas': citas|map(attribute='estado')|list, 'valores': citas|map(attribute='citas')|list}|tojson }}</script>
+    {% else %}<p class="text-secondary mb-0">Sin citas en el periodo.</p>{% endif %}</div>
+  {% elif m.clave == 'Calidad' %}
+    {% if tiempos %}<div class="seccion">Tiempos de atención</div><div class="row g-3 mb-3">
+      <div class="col-md-3"><div class="ind"><div class="n">Atenciones</div><div class="p">{{ tiempos.atenciones }}</div></div></div>
+      <div class="col-md-3"><div class="ind"><div class="n">Espera promedio</div><div class="p">{{ '%.1f'|format(tiempos.espera_promedio_min) if tiempos.espera_promedio_min is not none else '—' }}<small class="fs-6"> min</small></div></div></div>
+      <div class="col-md-3"><div class="ind"><div class="n">Espera mediana</div><div class="p">{{ '%.1f'|format(tiempos.espera_mediana_min) if tiempos.espera_mediana_min is not none else '—' }}<small class="fs-6"> min</small></div></div></div>
+      <div class="col-md-3"><div class="ind"><div class="n">Duración promedio</div><div class="p">{{ '%.1f'|format(tiempos.duracion_promedio_min) if tiempos.duracion_promedio_min is not none else '—' }}<small class="fs-6"> min</small></div></div></div></div>{% endif %}
+    {% if satisfaccion %}<div class="seccion">Satisfacción</div><div class="row g-3 mb-3">
+      <div class="col-md-4"><div class="ind"><div class="n">Encuestas</div><div class="p">{{ satisfaccion.encuestas }}</div></div></div>
+      <div class="col-md-4"><div class="ind"><div class="n">Puntaje promedio (1 a 5)</div><div class="p">{{ '%.2f'|format(satisfaccion.puntaje_promedio) if satisfaccion.puntaje_promedio is not none else '—' }}</div></div></div>
+      <div class="col-md-4"><div class="ind"><div class="n">Espera aceptable</div><div class="p">{{ ('%.1f'|format(satisfaccion.pct_espera_aceptable) ~ ' %') if satisfaccion.pct_espera_aceptable is not none else '—' }}</div></div></div></div>{% endif %}
+    <div class="seccion">Registros incompletos (para corregir)</div>
+    <div class="tabla-wrap">{% if incompletos %}<div class="table-responsive"><table class="table table-hover"><thead><tr><th>N.º atención</th><th>Fecha</th><th>Paciente</th><th>Médico</th><th>Campos faltantes</th></tr></thead><tbody>
+      {% for r in incompletos %}<tr><td><a href="{{ url_for('atencion.trabajo', aid=r.atencion_id) }}">{{ r.atencion_id }}</a></td><td>{{ r.fecha_atencion|fecha }}</td><td>{{ r.paciente }}</td><td>{{ r.medico }}</td><td><span class="est est-reprogramada">{{ (r.campos_faltantes|map('humano')|join(', ')) if r.campos_faltantes is not string else r.campos_faltantes }}</span></td></tr>{% endfor %}</tbody></table></div>
+      {% else %}{{ vacio('Sin registros incompletos en el periodo.', 'bi-check2-all') }}{% endif %}</div>
+  {% else %}
+    <div class="seccion">Eventos adversos del periodo</div>
+    <div class="tabla-wrap">{% if eventos %}<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Fecha</th><th>Paciente</th><th>Tipo</th><th>Gravedad</th><th>Descripción</th><th>Acción tomada</th><th>Procedimiento</th></tr></thead><tbody>
+      {% for e in eventos %}<tr><td>{{ e.fecha_evento|fecha }}</td><td>{{ e.paciente }}</td><td>{{ e.tipo }}</td><td>{{ estado(e.gravedad, e.gravedad|capitalize) }}</td><td>{{ e.descripcion }}</td><td>{{ e.accion_tomada or '—' }}</td><td>{{ e.procedimiento or '—' }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}{{ vacio('Sin eventos adversos en el periodo.', 'bi-shield-check') }}{% endif %}</div>
+    {% if tiene('auditoria.ver') %}<div class="seccion">Accesos no exitosos del periodo</div>
+    <div class="tabla-wrap">{% if accesos %}<div class="table-responsive"><table class="table table-hover"><thead><tr><th>Fecha y hora</th><th>Correo</th><th>Resultado</th><th>Motivo</th><th>IP</th></tr></thead><tbody>
+      {% for r in accesos %}<tr><td>{{ r.created_at|fechahora }}</td><td>{{ r.email_intentado }}</td><td>{{ estado(r.resultado) }}</td><td>{{ r.motivo or '—' }}</td><td>{{ r.ip or '—' }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}{{ vacio('Sin accesos no exitosos en el periodo.', 'bi-shield-check') }}{% endif %}</div>{% endif %}
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

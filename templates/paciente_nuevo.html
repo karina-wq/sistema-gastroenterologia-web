@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo %}
+{% block titulo %}Registrar paciente{% endblock %}
+{% block contenido %}
+{% call titulo('Registrar paciente nuevo', 'Los campos con * son obligatorios. El código se asigna automáticamente.') %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('pacientes.buscar') }}">Volver a la búsqueda</a>{% endcall %}
+<div class="tarjeta"><form method="post">{{ csrf() }}
+  {% with d = datos %}{% include '_form_paciente.html' %}{% endwith %}
+  <button class="btn btn-primary mt-3" type="submit"><i class="bi bi-check2 me-1"></i>Registrar paciente</button>
+</form></div>
+{% endblock %}

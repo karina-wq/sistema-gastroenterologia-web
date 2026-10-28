@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block cuerpo %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:100vh">
+  <div class="tarjeta text-center" style="max-width:460px">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" width="110" class="mb-3" alt="">
+    <h1 class="display-5">{{ codigo }}</h1><h2>{{ titulo }}</h2>
+    <p class="text-secondary">{{ detalle }}</p>
+    <a class="btn btn-primary" href="/">Volver al inicio</a>
+  </div>
+</div>
+{% endblock %}

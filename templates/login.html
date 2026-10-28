@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block cuerpo %}
+<div class="login-pagina">
+  <section class="login-marca">
+    <div class="logo"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Hospital Nacional Arzobispo Loayza" class="w-100"></div>
+    <h1>Control de Pacientes</h1>
+    <p>Servicio de Gastroenterología<br>Hospital Nacional Arzobispo Loayza · Lima, Perú</p>
+  </section>
+  <section class="login-form">
+    <div class="caja">
+      <h2 class="mb-1">Iniciar sesión</h2>
+      <p class="text-secondary mb-4">Ingrese con su correo institucional.</p>
+      <form method="post" autocomplete="on">{{ csrf() }}
+        <div class="mb-3"><label class="form-label" for="correo">Correo</label>
+          <div class="input-group"><span class="input-group-text"><i class="bi bi-envelope"></i></span>
+          <input class="form-control" id="correo" name="correo" type="email" value="{{ correo }}" required autofocus autocomplete="username"></div></div>
+        <div class="mb-3"><label class="form-label" for="clave">Contraseña</label>
+          <div class="input-group"><span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input class="form-control" id="clave" name="clave" type="password" required autocomplete="current-password">
+          <button class="btn btn-outline-secondary" type="button" data-libre="1" onclick="const i=document.getElementById('clave');i.type=i.type==='password'?'text':'password'"><i class="bi bi-eye"></i></button></div></div>
+        <button class="btn btn-primary w-100 py-2" type="submit">Ingresar</button>
+      </form>
+      <p class="small text-secondary mt-3">Si olvidó su contraseña o su cuenta está bloqueada, comuníquese con el administrador.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

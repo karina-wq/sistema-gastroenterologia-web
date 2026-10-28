@@ -1,0 +1,107 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, estado, vacio %}
+{% block titulo %}{{ p.apellidos }}, {{ p.nombres }}{% endblock %}
+{% block contenido %}
+{% call titulo(p.nombres ~ ' ' ~ p.apellidos, 'Código ' ~ p.codigo ~ ' · DNI ' ~ (p.dni or '—')) %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('pacientes.buscar') }}"><i class="bi bi-arrow-left me-1"></i>Búsqueda</a>{% endcall %}
+
+<div class="row g-3">
+  <div class="col-lg-4"><div class="tarjeta h-100">
+    <h2><i class="bi bi-person-vcard me-1"></i>Datos del paciente</h2>
+    <div class="dato"><span class="k">Edad / Sexo</span>{{ edad if edad is not none else '—' }} años · {{ 'Femenino' if p.sexo == 'F' else 'Masculino' }}</div>
+    <div class="dato"><span class="k">Nacimiento</span>{{ p.fecha_nacimiento|fecha }}</div>
+    <div class="dato"><span class="k">Teléfono</span>{{ p.telefono or '—' }}</div>
+    <div class="dato"><span class="k">Correo</span>{{ p.email or '—' }}</div>
+    <div class="dato"><span class="k">Dirección</span>{{ p.direccion or '—' }}</div>
+    <div class="dato"><span class="k">Nivel educativo</span>{{ p.nivel_educativo or '—' }}</div>
+    <div class="dato"><span class="k">Contacto de emergencia</span>{{ p.contacto_emergencia or '—' }}</div>
+    {% if tiene('pacientes.editar') %}<button class="btn btn-sm btn-outline-primary mt-1" data-bs-toggle="modal" data-bs-target="#m-editar"><i class="bi bi-pencil me-1"></i>Editar datos</button>{% endif %}
+  </div></div>
+
+  <div class="col-lg-8"><div class="tarjeta h-100">
+    <h2><i class="bi bi-clipboard2-pulse me-1"></i>Casos de control</h2>
+    {% if p.casos %}
+    <div class="table-responsive"><table class="table align-middle mb-3"><thead><tr><th>Diagnóstico</th><th>Estado</th><th>Ingreso</th><th>Cierre</th><th>Control cada</th><th>Último control</th><th></th></tr></thead><tbody>
+      {% for c in p.casos %}<tr>
+        <td><b>{{ c.diagnostico_cie10 }}</b><br><span class="small text-secondary">{{ c.diagnostico or '' }}</span></td>
+        <td>{{ estado(c.estado) }}</td><td>{{ c.fecha_ingreso|fecha }}</td><td>{{ c.fecha_cierre|fecha }}</td>
+        <td>{{ c.frecuencia_control_dias }} días</td><td>{{ c.fecha_ultimo_control|fecha }}</td>
+        <td class="text-end">{% if c.estado == 'en_seguimiento' and tiene('atenciones.registrar') %}<button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#m-cerrar" data-caso="{{ c.id }}" onclick="document.getElementById('cerrar-caso-id').value=this.dataset.caso">Cerrar caso</button>{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}{{ vacio('Este paciente aún no tiene casos de control.', 'bi-clipboard') }}{% endif %}
+    <div class="d-flex flex-wrap gap-2">
+      {% if not caso_activo and tiene('pacientes.editar') %}<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#m-caso"><i class="bi bi-plus-circle me-1"></i>Abrir caso de control</button>{% endif %}
+      {% if caso_activo and tiene('citas.gestionar') %}<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#m-cita"><i class="bi bi-calendar-plus me-1"></i>Programar cita</button>{% endif %}
+    </div>
+    {% if caso_activo and not tiene('citas.gestionar') and not tiene('atenciones.registrar') %}<div class="text-secondary small mt-2">Caso en seguimiento.</div>{% endif %}
+  </div></div>
+</div>
+
+{% if citas %}
+<div class="seccion">Citas de este paciente</div>
+<div class="tabla-wrap"><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Fecha</th><th>Hora</th><th>Médico</th><th>Estado</th></tr></thead><tbody>
+  {% for c in citas %}<tr><td>{{ c.fecha_programada|fecha }}</td><td>{{ c.hora_programada|hora }}</td><td>{{ c.medico or '—' }}</td><td>{{ estado(c.estado) }}</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endif %}
+
+{% if tiene('atenciones.ver') %}
+<div class="seccion">Historial de atenciones</div>
+<div class="tabla-wrap">
+{% if historial %}<div class="table-responsive"><table class="table table-hover align-middle"><thead><tr><th>N.º</th><th>Fecha</th><th>Estado</th><th>Registro</th><th>Diagnóstico</th><th>Motivo</th><th>Médico</th><th>Procedim.</th><th>Eventos</th><th></th></tr></thead><tbody>
+  {% for h in historial %}<tr><td>{{ h.id }}</td><td>{{ h.fecha_atencion|fecha }}</td><td>{{ estado(h.estado) }}</td>
+    <td>{% if h.registro_completo %}<span class="est est-si">Completo</span>{% else %}<span class="est est-reprogramada">Incompleto</span>{% endif %}</td>
+    <td>{{ h.diagnostico_cie10 }}<br><span class="small text-secondary">{{ h.diagnostico or '' }}</span></td><td class="small">{{ (h.motivo_consulta or '—')[:60] }}</td><td>{{ h.medico }}</td>
+    <td>{{ (h.procedimientos or [])|join(', ') or '—' }}</td><td>{{ h.eventos_adversos or 0 }}</td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('atencion.trabajo', aid=h.id) }}">Abrir</a></td></tr>{% endfor %}
+</tbody></table></div>{% else %}{{ vacio('Sin atenciones registradas.', 'bi-journal-medical') }}{% endif %}
+</div>
+{% endif %}
+
+{# ---------- Ventanas emergentes ---------- #}
+{% if tiene('pacientes.editar') %}
+<div class="modal fade" id="m-editar" tabindex="-1"><div class="modal-dialog modal-lg"><form class="modal-content" method="post" action="{{ url_for('pacientes.editar', pid=p.id) }}">{{ csrf() }}
+  <div class="modal-header"><h5 class="modal-title">Editar datos del paciente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">{% with d = p %}{% include '_form_paciente.html' %}{% endwith %}</div>
+  <div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar cambios</button></div></form></div></div>
+
+<div class="modal fade" id="m-caso" tabindex="-1"><div class="modal-dialog"><form class="modal-content" method="post" action="{{ url_for('pacientes.abrir_caso', pid=p.id) }}">{{ csrf() }}
+  <div class="modal-header"><h5 class="modal-title">Abrir caso de control</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body row g-3">
+    <div class="col-12"><label class="form-label">Diagnóstico (CIE-10)</label><select class="form-select" name="diagnostico" required>{% for cod, txt in diagnosticos.items() %}<option value="{{ cod }}">{{ txt }}</option>{% endfor %}</select></div>
+    <div class="col-12"><label class="form-label">Médico responsable</label><select class="form-select" name="medico_id" required>{% for mid, nom in medicos.items() %}<option value="{{ mid }}" {{ 'selected' if mid == usuario.id }}>{{ nom }}</option>{% endfor %}</select></div>
+    <div class="col-md-6"><label class="form-label">Control cada (días)</label><input class="form-control" type="number" name="frecuencia" value="30" min="1" max="365" required></div>
+    <div class="col-md-6"><label class="form-label">Plazo de seguimiento (días)</label><input class="form-control" type="number" name="plazo" value="0" min="0" max="730"><div class="form-text">0 = automático (frecuencia + 15)</div></div>
+    <div class="col-12"><label class="form-label">Observaciones</label><input class="form-control" name="observaciones"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary" type="submit">Abrir caso</button></div></form></div></div>
+{% endif %}
+
+{% if caso_activo and tiene('citas.gestionar') %}
+<div class="modal fade" id="m-cita" tabindex="-1"><div class="modal-dialog"><form class="modal-content" method="post" action="{{ url_for('pacientes.programar_cita', pid=p.id) }}">{{ csrf() }}
+  <input type="hidden" name="caso_id" value="{{ caso_activo.id }}"><input type="hidden" name="email_paciente" value="{{ p.email or '' }}">
+  <div class="modal-header"><h5 class="modal-title">Programar cita de control</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body row g-3">
+    <div class="col-md-6"><label class="form-label">Fecha</label><input class="form-control" type="date" name="fecha" min="{{ hoy }}" required></div>
+    <div class="col-md-6"><label class="form-label">Hora</label><input class="form-control" type="time" name="hora" value="09:00" step="900"></div>
+    <div class="col-12"><label class="form-label">Médico</label><select class="form-select" name="medico_id">{% for mid, nom in medicos.items() %}<option value="{{ mid }}" {{ 'selected' if mid == caso_activo.medico_id }}>{{ nom }}</option>{% endfor %}</select></div>
+    <div class="col-12"><label class="form-label">Enviar el recordatorio por</label><div class="btn-group w-100" role="group">
+      {% for c in ['correo', 'whatsapp', 'sms'] %}<input type="radio" class="btn-check" name="canal" id="canal-{{ c }}" value="{{ c }}" {{ 'checked' if c == 'correo' }}><label class="btn btn-outline-primary" for="canal-{{ c }}">{{ c|capitalize }}</label>{% endfor %}</div>
+      <div class="form-text">El recordatorio por correo requiere que el paciente tenga un correo registrado.</div></div>
+    <div class="col-12"><label class="form-label">Motivo</label><input class="form-control" name="motivo" value="Control programado"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary" type="submit">Programar cita</button></div></form></div></div>
+{% endif %}
+
+{% if tiene('atenciones.registrar') %}
+<div class="modal fade" id="m-cerrar" tabindex="-1"><div class="modal-dialog"><form class="modal-content" method="post" action="{{ url_for('pacientes.cerrar_caso', pid=p.id) }}">{{ csrf() }}
+  <input type="hidden" name="caso_id" id="cerrar-caso-id">
+  <div class="modal-header"><h5 class="modal-title">Cerrar el caso (alta o abandono)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <label class="form-label">Motivo del cierre</label>
+    <div class="btn-group w-100 mb-3"><input type="radio" class="btn-check" name="estado" id="e-alta" value="alta" checked><label class="btn btn-outline-primary" for="e-alta">Alta</label>
+      <input type="radio" class="btn-check" name="estado" id="e-aban" value="abandono"><label class="btn btn-outline-danger" for="e-aban">Abandono</label></div>
+    <label class="form-label">Observaciones</label><input class="form-control" name="observaciones">
+    <div class="form-text">Se cancelarán las citas futuras programadas de este caso.</div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-danger" type="submit">Cerrar caso</button></div></form></div></div>
+{% endif %}
+{% endblock %}

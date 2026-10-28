@@ -1,0 +1,125 @@
+{% extends 'base.html' %}{% from '_m.html' import titulo, estado, vacio %}
+{% block titulo %}Atención N.º {{ at.id }}{% endblock %}
+{% block contenido %}
+{% call titulo('Atención N.º ' ~ at.id, 'Fecha ' ~ (at.fecha_atencion|fecha)) %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('atencion.lista', fecha=at.fecha_atencion) }}"><i class="bi bi-arrow-left me-1"></i>Lista de citas</a>{% endcall %}
+
+<div class="tarjeta">
+  <div class="row g-3 align-items-center">
+    <div class="col-md"><span class="k text-secondary small fw-bold text-uppercase">Paciente</span><div class="fs-5 fw-bold"><a class="text-decoration-none" href="{{ url_for('pacientes.ficha', pid=at.paciente_id) }}">{{ at.paciente }}</a> <span class="text-secondary fs-6">({{ at.paciente_codigo }})</span></div></div>
+    <div class="col-md-3"><span class="text-secondary small fw-bold text-uppercase">Médico</span><div>{{ at.medico }}</div></div>
+    <div class="col-md-3"><span class="text-secondary small fw-bold text-uppercase">Diagnóstico</span><div>{{ at.diagnostico_cie10 or '—' }} <span class="small text-secondary">{{ at.diagnostico or '' }}</span></div></div>
+    <div class="col-md-auto">{{ estado(at.estado) }}{% if finalizada and not at.registro_completo %} <span class="est est-reprogramada">Incompleto</span>{% elif finalizada %} <span class="est est-si">Completo</span>{% endif %}</div>
+  </div>
+  <div class="small text-secondary mt-2">Llegada {{ at.hora_llegada|hora }} · Inicio {{ at.hora_inicio_atencion|hora }} · Fin {{ at.hora_fin_atencion|hora }}</div>
+</div>
+{% if finalizada and not at.registro_completo %}<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Faltan campos obligatorios: <b>{{ at.campos_faltantes|map('humano')|join(', ') }}</b>.{% if es_autor %} Puede reabrir la atención para completarlos.{% endif %}</div>{% endif %}
+
+{% macro resumen() %}
+  <div class="tarjeta">
+    <div class="row">
+      <div class="col-md-6"><div class="dato"><span class="k">Motivo de consulta</span>{{ at.motivo_consulta or '—' }}</div>
+        <div class="dato"><span class="k">Anamnesis</span>{{ at.anamnesis or '—' }}</div>
+        <div class="dato"><span class="k">Examen físico</span>{{ at.examen_fisico or '—' }}</div></div>
+      <div class="col-md-6"><div class="dato"><span class="k">Tratamiento</span>{{ at.tratamiento or '—' }}</div>
+        <div class="dato"><span class="k">Indicaciones</span>{{ at.indicaciones or '—' }}</div>
+        {% if at.observaciones %}<div class="dato"><span class="k">Observaciones</span>{{ at.observaciones }}</div>{% endif %}</div>
+    </div>
+    <div class="seccion">Protocolo</div>
+    {% for p in at.pasos %}<div class="paso"><i class="bi {{ 'bi-check-circle-fill text-success' if p.cumplido else 'bi-circle text-secondary' }}"></i><div>{{ p.orden }}. {{ p.descripcion }}</div></div>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% if finalizada %}
+  {{ resumen() }}
+  {% if es_autor %}
+  <details class="tarjeta"><summary class="fw-bold" style="cursor:pointer"><i class="bi bi-unlock me-1"></i>Reabrir para corregir</summary>
+    <form class="row g-2 mt-2" method="post" action="{{ url_for('atencion.reabrir', aid=at.id) }}" data-confirmar="¿Reabrir esta atención? El motivo quedará en la bitácora.">{{ csrf() }}
+      <div class="col-md-9"><input class="form-control" name="motivo" placeholder="Motivo de la reapertura (obligatorio)" required></div>
+      <div class="col-md-3"><button class="btn btn-warning w-100">Reabrir atención</button></div></form></details>
+  {% endif %}
+{% elif puede_editar %}
+<form class="tarjeta" method="post" action="{{ url_for('atencion.guardar', aid=at.id) }}">{{ csrf() }}
+  <input type="hidden" name="pasos" value="{{ at.pasos|map(attribute='paso_id')|join(',') }}">
+  <div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Motivo de consulta</label><textarea class="form-control" name="motivo_consulta" rows="3">{{ at.motivo_consulta or '' }}</textarea></div>
+    <div class="col-md-6"><label class="form-label">Anamnesis</label><textarea class="form-control" name="anamnesis" rows="3">{{ at.anamnesis or '' }}</textarea></div>
+    <div class="col-md-6"><label class="form-label">Examen físico</label><textarea class="form-control" name="examen_fisico" rows="3">{{ at.examen_fisico or '' }}</textarea></div>
+    <div class="col-md-6"><label class="form-label">Diagnóstico (CIE-10)</label><select class="form-select" name="diagnostico_cie10"><option value="">— Seleccione —</option>
+      {% for cod, txt in diagnosticos.items() %}<option value="{{ cod }}" {{ 'selected' if cod == at.diagnostico_cie10 }}>{{ txt }}</option>{% endfor %}</select>
+      <label class="form-label mt-3">Tratamiento</label><textarea class="form-control" name="tratamiento" rows="2">{{ at.tratamiento or '' }}</textarea></div>
+    <div class="col-md-6"><label class="form-label">Indicaciones al paciente</label><textarea class="form-control" name="indicaciones" rows="3">{{ at.indicaciones or '' }}</textarea></div>
+    <div class="col-md-6"><label class="form-label">Observaciones (opcional)</label><textarea class="form-control" name="observaciones" rows="3">{{ at.observaciones or '' }}</textarea></div>
+  </div>
+  <div class="seccion">Lista de verificación del protocolo</div>
+  {% for p in at.pasos %}<label class="paso" for="paso_{{ p.paso_id }}"><input class="form-check-input" type="checkbox" id="paso_{{ p.paso_id }}" name="paso_{{ p.paso_id }}" value="1" {{ 'checked' if p.cumplido }}>
+    <div>{{ p.orden }}. {{ p.descripcion }}{% if p.obligatorio %}<span class="chip-obl">obligatorio</span>{% endif %}</div></label>{% endfor %}
+  <div class="d-flex gap-2 mt-3 flex-wrap">
+    <button class="btn btn-outline-primary" name="accion" value="borrador" type="submit"><i class="bi bi-save me-1"></i>Guardar borrador</button>
+    <button class="btn btn-primary" name="accion" value="finalizar" type="submit"><i class="bi bi-check2-circle me-1"></i>Finalizar atención</button>
+  </div>
+</form>
+{% else %}
+  {{ resumen() }}
+  <div class="alert alert-info">Su rol puede consultar la atención y registrar eventos adversos o la encuesta, pero no editar el contenido clínico.</div>
+{% endif %}
+
+<ul class="nav nav-tabs mt-4" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-procedimientos" data-hash="procedimientos" type="button">Procedimientos <span class="badge text-bg-light">{{ at.procedimientos|length }}</span></button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-examenes" data-hash="examenes" type="button">Exámenes <span class="badge text-bg-light">{{ at.examenes|length }}</span></button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-eventos" data-hash="eventos" type="button">Eventos adversos <span class="badge text-bg-{{ 'danger' if at.eventos_adversos else 'light' }}">{{ at.eventos_adversos|length }}</span></button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-encuesta" data-hash="encuesta" type="button">Encuesta de satisfacción</button></li>
+</ul>
+<div class="tab-content tarjeta" style="border-top-left-radius:0;border-top-right-radius:0">
+  <div class="tab-pane fade show active" id="tab-procedimientos">
+    {% if at.procedimientos %}<div class="table-responsive"><table class="table"><thead><tr><th>Tipo</th><th>Fecha</th><th>Hallazgos</th><th>Conclusión</th></tr></thead><tbody>
+      {% for p in at.procedimientos %}<tr><td>{{ p.tipo }}</td><td>{{ p.fecha|fecha }}</td><td>{{ p.hallazgos or '—' }}</td><td>{{ p.conclusion or '—' }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="text-secondary">Sin procedimientos registrados.</p>{% endif %}
+    {% if puede_editar %}<form class="row g-2 border-top pt-3" method="post" action="{{ url_for('atencion.procedimiento', aid=at.id) }}">{{ csrf() }}
+      <div class="col-md-4"><label class="form-label">Tipo de procedimiento</label><select class="form-select" name="tipo">{% for t in tipos_proc %}<option>{{ t }}</option>{% endfor %}</select></div>
+      <div class="col-md-4"><label class="form-label">Hallazgos</label><input class="form-control" name="hallazgos"></div>
+      <div class="col-md-4"><label class="form-label">Conclusión</label><input class="form-control" name="conclusion"></div>
+      <div class="col-12"><button class="btn btn-outline-primary btn-sm">Agregar procedimiento</button></div></form>{% endif %}
+  </div>
+  <div class="tab-pane fade" id="tab-examenes">
+    {% if at.examenes %}<div class="table-responsive"><table class="table"><thead><tr><th>Tipo</th><th>Examen</th><th>Resultado</th><th>Valor</th><th>Unidad</th><th>Fecha</th></tr></thead><tbody>
+      {% for e in at.examenes %}<tr><td>{{ e.tipo }}</td><td>{{ e.nombre_examen }}</td><td>{{ e.resultado or '—' }}</td><td>{{ e.valor_numerico if e.valor_numerico is not none else '—' }}</td><td>{{ e.unidad or '' }}</td><td>{{ e.fecha|fecha }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="text-secondary">Sin exámenes registrados.</p>{% endif %}
+    {% if puede_editar %}<form class="row g-2 border-top pt-3" method="post" action="{{ url_for('atencion.examen', aid=at.id) }}">{{ csrf() }}
+      <div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" name="tipo">{% for t in tipos_examen %}<option>{{ t }}</option>{% endfor %}</select></div>
+      <div class="col-md-5"><label class="form-label">Nombre del examen (ej. Hemoglobina)</label><input class="form-control" name="nombre" required></div>
+      <div class="col-md-4"><label class="form-label">Resultado</label><input class="form-control" name="resultado"></div>
+      <div class="col-md-3"><label class="form-label">Valor numérico (opcional)</label><input class="form-control" name="valor" inputmode="decimal"></div>
+      <div class="col-md-3"><label class="form-label">Unidad (opcional)</label><input class="form-control" name="unidad"></div>
+      <div class="col-12"><button class="btn btn-outline-primary btn-sm">Agregar examen</button></div></form>{% endif %}
+  </div>
+  <div class="tab-pane fade" id="tab-eventos">
+    {% if at.eventos_adversos %}<div class="table-responsive"><table class="table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Gravedad</th><th>Descripción</th><th>Acción tomada</th></tr></thead><tbody>
+      {% for e in at.eventos_adversos %}<tr><td>{{ e.fecha_evento|fecha }}</td><td>{{ e.tipo }}</td><td>{{ estado(e.gravedad, e.gravedad|capitalize) }}</td><td>{{ e.descripcion }}</td><td>{{ e.accion_tomada or '—' }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="text-secondary">Sin eventos adversos registrados en esta atención.</p>{% endif %}
+    {% if puede_evento %}<form class="row g-2 border-top pt-3" method="post" action="{{ url_for('atencion.evento', aid=at.id) }}">{{ csrf() }}
+      <div class="col-md-4"><label class="form-label">Tipo de evento</label><select class="form-select" name="tipo">{% for t in tipos_evento %}<option>{{ t }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><label class="form-label">Gravedad</label><select class="form-select" name="gravedad">{% for g in gravedades %}<option value="{{ g }}">{{ g|capitalize }}</option>{% endfor %}</select></div>
+      <div class="col-md-5"><label class="form-label">Si eligió «Otro», escriba el tipo</label><input class="form-control" name="otro"></div>
+      <div class="col-md-6"><label class="form-label">Descripción</label><textarea class="form-control" name="descripcion" rows="2" required></textarea></div>
+      <div class="col-md-6"><label class="form-label">Acción tomada</label><textarea class="form-control" name="accion" rows="2"></textarea></div>
+      <div class="col-md-6"><label class="form-label">Procedimiento relacionado (opcional)</label><select class="form-select" name="procedimiento_id"><option value="">Ninguno</option>
+        {% for p in at.procedimientos %}<option value="{{ p.id }}">{{ p.tipo }} ({{ p.fecha|fecha }})</option>{% endfor %}</select></div>
+      <div class="col-12"><button class="btn btn-danger btn-sm">Registrar evento adverso</button></div></form>{% endif %}
+  </div>
+  <div class="tab-pane fade" id="tab-encuesta">
+    {% if at.encuesta %}
+      <p class="mb-1">Puntaje: <b class="fs-5">{{ at.encuesta.puntaje }} / 5</b> {% for i in range(at.encuesta.puntaje) %}<i class="bi bi-star-fill text-warning"></i>{% endfor %}</p>
+      <p class="mb-1">Tiempo de espera aceptable: <b>{{ 'Sí' if at.encuesta.tiempo_espera_aceptable else ('No' if at.encuesta.tiempo_espera_aceptable is not none else '—') }}</b></p>
+      {% if at.encuesta.comentario %}<p>Comentario: {{ at.encuesta.comentario }}</p>{% endif %}
+    {% elif puede_encuesta %}
+      <form method="post" action="{{ url_for('atencion.encuesta', aid=at.id) }}">{{ csrf() }}
+        <label class="form-label">¿Cómo califica la atención recibida? (1 = muy mala, 5 = muy buena)</label>
+        <div class="btn-group mb-3 d-flex" style="max-width:380px">{% for i in range(1, 6) %}<input type="radio" class="btn-check" name="puntaje" id="pt{{ i }}" value="{{ i }}" {{ 'checked' if i == 5 }}><label class="btn btn-outline-warning" for="pt{{ i }}">{{ i }}</label>{% endfor %}</div>
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="espera" value="1" id="espera" checked><label class="form-check-label" for="espera">El tiempo de espera fue aceptable</label></div>
+        <div class="mb-3"><label class="form-label">Comentario (opcional)</label><input class="form-control" name="comentario"></div>
+        <button class="btn btn-outline-primary btn-sm">Guardar encuesta</button></form>
+    {% else %}<p class="text-secondary">Sin encuesta registrada.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}
