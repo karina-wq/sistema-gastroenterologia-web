@@ -1,5 +1,6 @@
 """Agenda de citas y recordatorios."""
 import smtplib
+import unicodedata
 from datetime import time, timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -12,6 +13,10 @@ bp = Blueprint("agenda", __name__)
 ESTADOS = {"programada": "Programada", "asistio": "Asistió", "inasistio": "Inasistió",
            "reprogramada": "Reprogramada", "cancelada": "Cancelada"}
 MAX_ENVIO_MASIVO = 50
+
+
+def _sin_tildes(texto):
+    return "".join(c for c in unicodedata.normalize("NFD", texto.lower()) if unicodedata.category(c) != "Mn")
 
 
 def _hora(texto):
@@ -86,9 +91,16 @@ def enviar_uno(usuario, r):
 def recordatorios():
     ok, pendientes = a.ejecutar(clinico.recordatorios_pendientes, a.usuario_actual())
     pendientes = pendientes if ok else []
-    detalle = [{**r, "mensaje": clinico.mensaje_recordatorio(r)} for r in pendientes[:30]]
+    # Los más recientes primero (así una cita recién programada se ve de inmediato)
+    q = (request.args.get("q") or "").strip()
+    visibles = list(reversed(pendientes))
+    if q:   # buscador: por nombre (sin distinguir tildes ni mayúsculas) o por correo
+        visibles = [r for r in visibles if all(
+            _sin_tildes(p) in _sin_tildes(f"{r['paciente']} {r['email'] or ''}") for p in q.split())]
+    detalle = [{**r, "mensaje": clinico.mensaje_recordatorio(r)} for r in visibles[:30]]
     con_correo = sum(1 for r in pendientes if r["email"])
     return render_template("recordatorios.html", total=len(pendientes), detalle=detalle, con_correo=con_correo,
+                           q=q, encontrados=len(visibles),
                            lote=min(con_correo, MAX_ENVIO_MASIVO), maximo=MAX_ENVIO_MASIVO,
                            correo=a.correo_configurado())
 
@@ -125,6 +137,10 @@ def envio_masivo():
     usuario = a.usuario_actual()
     if not a.correo_configurado():
         flash("El envío por correo no está configurado en el servidor.", "warning")
+        return redirect(url_for("agenda.recordatorios"))
+    if a.hay_datos_simulados():   # evita escribir a correos de pacientes de prueba
+        flash("El envío masivo está bloqueado mientras existan datos simulados. "
+              "Envíe uno por uno desde el detalle.", "warning")
         return redirect(url_for("agenda.recordatorios"))
     ok, pendientes = a.ejecutar(clinico.recordatorios_pendientes, usuario)
     lote = [r for r in (pendientes if ok else []) if r["email"]][:MAX_ENVIO_MASIVO]
