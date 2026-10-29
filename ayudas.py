@@ -16,11 +16,8 @@ import ipaddress
 import logging
 import os
 import secrets
-import smtplib
-import ssl
 import time
 from datetime import date, datetime
-from email.message import EmailMessage
 from functools import wraps
 
 import psycopg2
@@ -273,27 +270,3 @@ def _texto_csv(valor):
     if isinstance(valor, (list, tuple, set)):
         return ", ".join(map(str, valor))
     return str(valor)
-
-
-# ----------------------------------------------------------------------
-# 6. Correo (recordatorios por Gmail)
-# ----------------------------------------------------------------------
-ASUNTO = "Recordatorio de control - Gastroenterología, Hospital Nacional Arzobispo Loayza"
-
-
-def correo_configurado():
-    return bool(os.environ.get("GMAIL_USER") and os.environ.get("GMAIL_APP_PASSWORD"))
-
-
-def enviar_correo(destino, cuerpo, asunto=ASUNTO):
-    """Envía un correo de texto simple. Lanza una excepción si Gmail lo rechaza."""
-    usuario = os.environ["GMAIL_USER"].strip()
-    clave = os.environ["GMAIL_APP_PASSWORD"].replace(" ", "")   # Gmail la muestra con espacios
-    mensaje = EmailMessage()
-    mensaje["From"] = f"Gastroenterología HNAL <{usuario}>"
-    mensaje["To"] = destino
-    mensaje["Subject"] = asunto
-    mensaje.set_content(cuerpo)
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context(), timeout=20) as servidor:
-        servidor.login(usuario, clave)
-        servidor.send_message(mensaje)
