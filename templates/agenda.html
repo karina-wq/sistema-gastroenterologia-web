@@ -48,7 +48,7 @@
   <div class="modal-body row g-3">
     <div class="col-md-6"><label class="form-label">Nueva fecha</label><input class="form-control" type="date" name="fecha" min="{{ hoy }}" required></div>
     <div class="col-md-6"><label class="form-label">Hora</label><input class="form-control" type="time" name="hora" value="09:00" step="900"></div>
-    <div class="col-12"><label class="form-label">Recordatorio por</label><select class="form-select" name="canal"><option>correo</option><option>whatsapp</option><option>sms</option></select></div>
+    <input type="hidden" name="canal" value="whatsapp">
   </div>
   <div class="modal-footer"><button class="btn btn-primary" type="submit">Reprogramar</button></div></form></div></div>
 <div class="modal fade" id="m-cancel" tabindex="-1"><div class="modal-dialog"><form class="modal-content" method="post" data-campo="accion">{{ csrf() }}

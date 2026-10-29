@@ -83,9 +83,7 @@
     <div class="col-md-6"><label class="form-label">Fecha</label><input class="form-control" type="date" name="fecha" min="{{ hoy }}" required></div>
     <div class="col-md-6"><label class="form-label">Hora</label><input class="form-control" type="time" name="hora" value="09:00" step="900"></div>
     <div class="col-12"><label class="form-label">Médico</label><select class="form-select" name="medico_id">{% for mid, nom in medicos.items() %}<option value="{{ mid }}" {{ 'selected' if mid == caso_activo.medico_id }}>{{ nom }}</option>{% endfor %}</select></div>
-    <div class="col-12"><label class="form-label">Enviar el recordatorio por</label><div class="btn-group w-100" role="group">
-      {% for c in ['correo', 'whatsapp', 'sms'] %}<input type="radio" class="btn-check" name="canal" id="canal-{{ c }}" value="{{ c }}" {{ 'checked' if c == 'correo' }}><label class="btn btn-outline-primary" for="canal-{{ c }}">{{ c|capitalize }}</label>{% endfor %}</div>
-      <div class="form-text">El recordatorio por correo requiere que el paciente tenga un correo registrado.</div></div>
+    <div class="col-12"><div class="form-text"><i class="bi bi-whatsapp text-success me-1"></i>El recordatorio se envía por WhatsApp al teléfono del paciente (2 días antes, 9:00 a. m.).</div><input type="hidden" name="canal" value="whatsapp"></div>
     <div class="col-12"><label class="form-label">Motivo</label><input class="form-control" name="motivo" value="Control programado"></div>
   </div>
   <div class="modal-footer"><button class="btn btn-primary" type="submit">Programar cita</button></div></form></div></div>

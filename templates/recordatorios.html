@@ -1,20 +1,15 @@
 {% extends 'base.html' %}{% from '_m.html' import titulo, vacio, kpi %}
 {% block titulo %}Recordatorios{% endblock %}
 {% block contenido %}
-{% call titulo('Recordatorios de citas', 'Son los recordatorios cuya hora de envío ya llegó (2 días antes de la cita, 9:00 a. m.).') %}
+{% call titulo('Recordatorios de citas', 'Son los recordatorios cuya hora de envío ya llegó (2 días antes de la cita, 9:00 a. m.). Se envían por WhatsApp.') %}
   <a class="btn btn-outline-primary" href="{{ url_for('agenda.citas') }}"><i class="bi bi-calendar-check me-1"></i>Agenda</a>{% endcall %}
-<div class="row g-3 mb-3"><div class="col-md-4">{{ kpi('Por enviar', total, 'pendientes ahora', 'ambar', 'bi-envelope-paper') }}</div>
-  <div class="col-md-4">{{ kpi('Con correo', con_correo, 'se pueden enviar por correo', 'azul', 'bi-at') }}</div></div>
-{% if not correo %}<div class="alert alert-info"><i class="bi bi-info-circle me-1"></i>El envío por correo aún no está configurado en el servidor. Mientras tanto, copie el mensaje y márquelo como enviado. Para activarlo agregue <code>GMAIL_USER</code> y <code>GMAIL_APP_PASSWORD</code> en las variables de entorno (ver la guía).</div>{% endif %}
+<div class="row g-3 mb-3"><div class="col-md-4">{{ kpi('Por enviar', total, 'pendientes ahora', 'ambar', 'bi-whatsapp') }}</div>
+  <div class="col-md-4">{{ kpi('Con teléfono', con_telefono, 'se pueden enviar por WhatsApp', 'azul', 'bi-telephone') }}</div></div>
 {% if total == 0 %}<div class="alert alert-success">No hay recordatorios pendientes.</div>{% else %}
-  {% if correo and con_correo and not datos_simulados %}
-  <div class="tarjeta d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div><b>Enviar por correo todos los que tienen correo</b><div class="small text-secondary">Se envían como máximo {{ maximo }} por vez ({{ lote }} ahora).</div></div>
-    <form method="post" action="{{ url_for('agenda.envio_masivo') }}" data-confirmar="¿Enviar {{ lote }} recordatorios por correo?">{{ csrf() }}<button class="btn btn-primary"><i class="bi bi-send me-1"></i>Enviar {{ lote }} recordatorios</button></form>
-  </div>{% endif %}
+  <div class="alert alert-info"><i class="bi bi-info-circle me-1"></i><b>Cómo enviar:</b> mantenga abierto <b>web.whatsapp.com</b> (con su sesión iniciada), despliegue al paciente y pulse <b>Enviar por WhatsApp</b>. Se abrirá su chat con el mensaje ya escrito; solo pulse <b>Enviar</b> en WhatsApp y luego <b>Marcar como enviado</b> aquí.</div>
   <div class="seccion">Detalle</div>
   <form method="get" class="tarjeta d-flex gap-2 mb-3">
-    <input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar paciente por nombre o correo (ej. Karina)" autofocus>
+    <input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar paciente por nombre o teléfono (ej. Karina)" autofocus>
     <button class="btn btn-primary"><i class="bi bi-search me-1"></i>Buscar</button>
     {% if q %}<a class="btn btn-outline-secondary" href="{{ url_for('agenda.recordatorios') }}">Ver todos</a>{% endif %}
   </form>
@@ -23,17 +18,18 @@
   <div class="accordion" id="acc-rec">
   {% for r in detalle %}
     <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#r{{ r.id }}">
-      <b>{{ r.paciente }}</b>&nbsp;· cita del {{ r.fecha_programada|fecha }} {{ r.hora_programada|hora }} · <span class="est est-programada ms-2">{{ r.canal }}</span></button></h2>
+      <b>{{ r.paciente }}</b>&nbsp;· cita del {{ r.fecha_programada|fecha }} {{ r.hora_programada|hora }}</button></h2>
     <div id="r{{ r.id }}" class="accordion-collapse collapse {{ 'show' if q and loop.first }}" data-bs-parent="#acc-rec"><div class="accordion-body">
       <label class="form-label">Mensaje</label><textarea class="form-control mb-2" rows="3" readonly onclick="this.select()">{{ r.mensaje }}</textarea>
-      <div class="small text-secondary mb-3">Teléfono: {{ r.telefono or '—' }} · Correo: {{ r.email or '—' }}</div>
+      <div class="small text-secondary mb-3">Teléfono: {{ r.telefono or '—' }}</div>
       <div class="d-flex flex-wrap gap-2">
-        {% if correo and r.email %}<form method="post" action="{{ url_for('agenda.accion_recordatorio', rid=r.id, accion='correo') }}">{{ csrf() }}<button class="btn btn-sm btn-primary"><i class="bi bi-envelope me-1"></i>Enviar por correo</button></form>{% endif %}
+        {% if r.wa %}<a class="btn btn-sm btn-success" href="{{ r.wa }}" target="whatsapp_web" rel="noopener"><i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp</a>
+        {% else %}<span class="btn btn-sm btn-outline-secondary disabled">Sin teléfono válido</span>{% endif %}
         <form method="post" action="{{ url_for('agenda.accion_recordatorio', rid=r.id, accion='enviado') }}">{{ csrf() }}<button class="btn btn-sm btn-outline-success">Marcar como enviado</button></form>
         <form method="post" action="{{ url_for('agenda.accion_recordatorio', rid=r.id, accion='fallido') }}">{{ csrf() }}<button class="btn btn-sm btn-outline-danger">Marcar como fallido</button></form>
       </div></div></div></div>
   {% endfor %}
   </div>
-  {% if total > detalle|length %}<div class="small text-secondary mt-2">Se muestran los primeros {{ detalle|length }} de {{ total }}.</div>{% endif %}
+  {% if total > detalle|length and not q %}<div class="small text-secondary mt-2">Se muestran los primeros {{ detalle|length }} de {{ total }}. Use el buscador para ubicar a un paciente.</div>{% endif %}
 {% endif %}
 {% endblock %}
