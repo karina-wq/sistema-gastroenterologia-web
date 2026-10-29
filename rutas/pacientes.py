@@ -101,14 +101,11 @@ def programar_cita(pid):
     usuario = a.usuario_actual()
     caso_id = a.entero_arg("caso_id")
     fecha = a.fecha_arg("fecha", None)
-    canal = f.get("canal", "correo")
+    canal = "whatsapp"   # el sistema recuerda únicamente por WhatsApp
     ok, _ = a.ejecutar(clinico.programar_cita, usuario, caso_id, fecha, _hora(f.get("hora")),
                        a.entero_arg("medico_id"), f.get("motivo") or "Control programado", canal)
     if ok:
         flash("Cita programada. Se generó su recordatorio (2 días antes, 9:00 a. m.).", "success")
-        if canal == "correo" and not (f.get("email_paciente") or "").strip():
-            flash("Este paciente no tiene correo registrado: agréguelo en «Editar datos» para que el "
-                  "recordatorio pueda enviarse.", "warning")
     return redirect(url_for("pacientes.ficha", pid=pid))
 
 
